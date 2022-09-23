@@ -1,0 +1,4 @@
+node_modules/
+cairo_venv/
+.env
+cache/
