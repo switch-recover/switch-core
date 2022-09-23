@@ -8,7 +8,7 @@ async function main() {
     const L1HeadersStoreAddress = 837485042664063856828332244883203579059038878551051469326645034621781373797n
     const L1GatewayAddress = 429955882159492657148005544722965770209018004439n
 
-    const storageProverFactory = await starknet.getContractFactory("StorageProver")
+    const storageProverFactory = await starknet.getContractFactory("storage_prover")
     const storageProver = await storageProverFactory.deploy({
         _fact_registry_address: factRegistryAddressFelt,
         _L1_headers_store_address: L1HeadersStoreAddress,

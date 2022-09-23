@@ -40,7 +40,8 @@ contract RecoveryContract {
         for (uint256 i = 0; i < erc20contracts.length; i++) {
             address erc20contract = erc20contracts[i];
             uint256 balance = IERC20(erc20contract).allowance(
-                EOA, address(this)
+                EOA,
+                address(this)
             );
             if (balance > 0) {
                 IERC20(erc20contract).transferFrom(EOA, to, balance);
@@ -107,7 +108,12 @@ contract GatewayContract {
             "Recovery contract exists"
         );
         address _recoveryContractAddress = address(
-            new RecoveryContract(recipient, minBlocks, address(this), msg.sender)
+            new RecoveryContract(
+                recipient,
+                minBlocks,
+                address(this),
+                msg.sender
+            )
         );
         eoaToRecoveryContract[msg.sender] = _recoveryContractAddress;
         emit NewRecoveryContract(
