@@ -25,92 +25,9 @@ function unstringifyBigInts(o) {
     }
 }
 
-describe("SecretClaim for groth16", function () {
-    let Verifier;
-    let verifier;
-
-    beforeEach(async function () {
-        [account1,account2] = await ethers.getSigners();
-        Verifier = await ethers.getContractFactory("GatewayContract");
-        verifier = await Verifier.deploy();
-        await verifier.deployed();
-    });
-
-    it("Should return true for correct proof", async function () {
-        //[assignment] Add comments to explain what each line is doing
-        // computes the witness based on inputs
-        const { proof, publicSignals } = await groth16.fullProve({"key":"212","secret":"3333", "recipient":"0x34B716A2B8bFeBC37322f6E33b3472D71BBc5631"}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-
-        console.log(publicSignals[0]);
-
-        // convert string to BigInt
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-
-        // retrieves the calldata that we need to pass to the solidity contract
-        const calldata = await groth16.exportSolidityCallData(editedProof, editedPublicSignals);
-
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
-
-        const a = [argv[0], argv[1]];
-        const b = [[argv[2], argv[3]], [argv[4], argv[5]]];
-        const c = [argv[6], argv[7]];
-        const Input = argv.slice(8);
-
-        console.log(BigInt(Input[1]).toString())
-
-        // pass in secret phrase and address
-        // inside the circuit stores the correct hash
-        // check that the hash matches and spit out the proof
-
-        // makes sure that the proof is correct
-        expect(await verifier.verifyProof(a, b, c, Input)).to.be.true;
-    });
-    it("Should return false for invalid proof", async function () {
-        let a = [0, 0];
-        let b = [[0, 0], [0, 0]];
-        let c = [0, 0];
-        let d = [0, 0]
-        expect(await verifier.verifyProof(a, b, c, d)).to.be.false;
-    });
-
-    it("Should accept a valid proof", async function () {
-        //[assignment] Add comments to explain what each line is doing
-        // computes the witness based on inputs
-        const { proof, publicSignals } = await groth16.fullProve({"key":"212","secret":"3333", "recipient":"0x34B716A2B8bFeBC37322f6E33b3472D71BBc5631"}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-
-        console.log(publicSignals[0]);
-
-        // convert string to BigInt
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-
-        // retrieves the calldata that we need to pass to the solidity contract
-        const calldata = await groth16.exportSolidityCallData(editedProof, editedPublicSignals);
-
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
-
-        const a = [argv[0], argv[1]];
-        const b = [[argv[2], argv[3]], [argv[4], argv[5]]];
-        const c = [argv[6], argv[7]];
-        const Input = argv.slice(8);
-
-        console.log(BigInt(Input[1]).toString())
-
-        // pass in secret phrase and address
-        // inside the circuit stores the correct hash
-        // check that the hash matches and spit out the proof
-
-        // makes sure that the proof is correct
-        expect(await verifier.verifyProof(a, b, c, Input)).to.be.true;
-    });
-});
-
 describe("SecretClaim with PLONK", function () {
     let Verifier;
     let verifier;
-    let SecretClaim;
-    let secretClaim;
 
     beforeEach(async function () {
         [account1,account2] = await ethers.getSigners();
@@ -136,7 +53,7 @@ describe("SecretClaim with PLONK", function () {
     });
 
     it("Should return true for correct proof on the smart contract", async function () {
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account1.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
 
         const editedPublicSignals = unstringifyBigInts(publicSignals);
         const editedProof = unstringifyBigInts(proof);
@@ -147,12 +64,18 @@ describe("SecretClaim with PLONK", function () {
         console.log("test", [argv[1],argv[2]]);
         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
-        SecretClaim = await ethers.getContractFactory("SecretClaim");
-        secretClaim = await SecretClaim.deploy(argv[1]);
-        await secretClaim.deployed();
+        GatewayContract = await ethers.getContractFactory("GatewayContract");
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000");
+        await gatewayContract.deployed();
 
-        // has to match account1, cannot front run`
-        await secretClaim.connect(account1).verifyZkProof(argv[0]);
+        await gatewayContract.deployRecoveryContractZk(10, argv[1]);
+        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        console.log("worked", recoveryContractAddress);
+        const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+        // has to match the pre-inserted account2 into the proof
+        await recoveryContract.connect(account1).verifyZkProof(argv[0], account2.address);
     });
 
 });
