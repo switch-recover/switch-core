@@ -38,7 +38,7 @@ describe("SecretClaim with PLONK", function () {
 
     it("Should return true for correct proof", async function () {
         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient":"0x34B716A2B8bFeBC37322f6E33b3472D71BBc5631"}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-        console.log(publicSignals[0]);
+        // console.log(publicSignals[0]);
 
         const editedPublicSignals = unstringifyBigInts(publicSignals);
         const editedProof = unstringifyBigInts(proof);
@@ -61,7 +61,7 @@ describe("SecretClaim with PLONK", function () {
 
         const argv = calldata.replace(/["[\]\s]/g, "").split(',')
 
-        console.log("test", [argv[1],argv[2]]);
+        // console.log("test", [argv[1],argv[2]]);
         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
         GatewayContract = await ethers.getContractFactory("GatewayContract");
@@ -71,11 +71,32 @@ describe("SecretClaim with PLONK", function () {
         await gatewayContract.deployRecoveryContractZk(10, argv[1]);
         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        console.log("worked", recoveryContractAddress);
         const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
         // has to match the pre-inserted account2 into the proof
         await recoveryContract.connect(account1).verifyZkProof(argv[0], account2.address);
+    });
+
+    it("Should fail if the proof doesn't match the defined address", async function () {
+        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+
+        const editedPublicSignals = unstringifyBigInts(publicSignals);
+        const editedProof = unstringifyBigInts(proof);
+        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
+        expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
+
+        GatewayContract = await ethers.getContractFactory("GatewayContract");
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000");
+        await gatewayContract.deployed();
+
+        await gatewayContract.deployRecoveryContractZk(10, argv[1]);
+        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+        await expect(recoveryContract.connect(account1).verifyZkProof(argv[0], account1.address)).to.revertedWith("Proof verification failed");
     });
 
 });
