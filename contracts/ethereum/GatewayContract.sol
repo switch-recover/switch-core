@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT.
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
 import "./SecretClaimVerifier_plonk.sol";
 import "./IERC20.sol";
@@ -96,26 +96,8 @@ contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk 
         address _gatewayContract,
         address _EOA,
         uint _hashedPassword
-    ) RecoveryContract ( _recipient,  _minBlocks,  _gatewayContract , _EOA  ) {
+    ) RecoveryContract(_recipient, _minBlocks, _gatewayContract, _EOA) {
         hashedPassword = _hashedPassword;
-    }
-
-    function claimAssets(address[] calldata erc20contracts, address to)
-        external
-    {
-        require(msg.sender == recipient, "Only recipient");
-        require(isActive == true, "Not active");
-        require(!isTerminated, "Already terminated");
-        for (uint256 i = 0; i < erc20contracts.length; i++) {
-            address erc20contract = erc20contracts[i];
-            uint256 balance = IERC20(erc20contract).allowance(
-                EOA,
-                address(this)
-            );
-            if (balance > 0) {
-                IERC20(erc20contract).transferFrom(EOA, to, balance);
-            }
-        }
     }
 
     /// @notice verifies the proof, and confirms that it contains the new recipient.
@@ -132,28 +114,18 @@ contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk 
         require(this.verifyProof(proof,pubSignals), "Proof verification failed");
     }
 
-    function terminateRecoveryContract() external {
-        require(msg.sender == gatewayContract, "Not gateway");
-        isTerminated = true;
-    }
 
-    function activateRecovery(uint256 blocks, bytes calldata proof, address _recipient) external override {
+    function activateRecovery(uint256 blocks, bytes calldata proof, address _recipient) external {
         require(msg.sender == gatewayContract, "Not gateway");
-        require(_recipient != address("0x"), "Null address");
+        require(_recipient != address(0x0), "Null address");
         require(!isActive, "Already active");
         require(!isTerminated, "Already terminated");
         require(blocks >= minBlocks, "Inactivity too short");
-        verifyZkProof(proof);
+        verifyZkProof(proof, _recipient);
         recipient = _recipient;
         isActive = true;
         emit ActiveRecovery(address(this), recipient, block.timestamp);
     }
-
-    event ActiveRecovery(
-        address contractAddress,
-        address recipient,
-        uint256 activationTime
-    );
 }
 
 contract GatewayContract {
@@ -199,7 +171,7 @@ contract GatewayContract {
         RecoveryContract(_recoveryContractAddress).activateRecovery(blocks);
     }
 
-    function receiveFromStorageProverZkProof(uint256 userAddress, uint256 block, bytes calldata proof)
+    function receiveFromStorageProverZkProof(uint256 userAddress, uint256 blocks, bytes calldata proof)
         external
     {
         // Construct the withdrawal message's payload.
@@ -213,7 +185,7 @@ contract GatewayContract {
 
         address conversion = address(uint160(userAddress));
         address _recoveryContractAddress = eoaToRecoveryContract[conversion];
-        RecoveryContract(_recoveryContractAddress).activateRecovery(blocks, proof, msg.sender);
+        RecoveryContractZkProof(_recoveryContractAddress).activateRecovery(blocks, proof, msg.sender);
     }
 
     function terminateRecoveryContract() external {
