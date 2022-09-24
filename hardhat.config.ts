@@ -1,22 +1,31 @@
 import { HardhatUserConfig } from "hardhat/config"
-import "@shardlabs/starknet-hardhat-plugin"
+// import "@shardlabs/starknet-hardhat-plugin"
 import "@nomiclabs/hardhat-etherscan"
 import "@nomiclabs/hardhat-ethers"
-import "dotenv/config"
+require("dotenv").config({path: '../.env'});
+require("@nomiclabs/hardhat-waffle");
+
+task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
+    const accounts = await hre.ethers.getSigners();
+  
+    for (const account of accounts) {
+      console.log(account.address);
+    }
+});
 
 const config: HardhatUserConfig = {
     solidity: "0.8.9",
-    starknet: {
-        venv: "cairo_venv",
-        network: "alpha-goerli",
-        wallets: {
-            OpenZeppelin: {
-                accountName: "OpenZeppelin",
-                modulePath: "starkware.starknet.wallets.open_zeppelin.OpenZeppelinAccount",
-                accountPath: "~/.starknet_accounts",
-            },
-        },
-    },
+    // starknet: {
+    //     venv: "cairo_venv",
+    //     network: "alpha-goerli",
+    //     wallets: {
+    //         OpenZeppelin: {
+    //             accountName: "OpenZeppelin",
+    //             modulePath: "starkware.starknet.wallets.open_zeppelin.OpenZeppelinAccount",
+    //             accountPath: "~/.starknet_accounts",
+    //         },
+    //     },
+    // },
     networks: {
         goerli: {
             url: `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
@@ -24,9 +33,9 @@ const config: HardhatUserConfig = {
             accounts: [process.env.DEPLOYER_PRIVATE_KEY || ""],
         },
     },
-    etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY,
-    },
+    // etherscan: {
+    //     apiKey: process.env.ETHERSCAN_API_KEY,
+    // },
 }
 
 export default config

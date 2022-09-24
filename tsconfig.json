@@ -8,6 +8,6 @@
         "skipLibCheck": true
     },
     "exclude": ["cairo_venv", "node_modules"],
-    "include": ["./test", "./test/**/*", "./scripts", "./scripts/**/*"],
+    "include": ["./test","test", "test/**/*", "./scripts", "./scripts/**/*"],
     "files": ["./hardhat.config.ts"]
 }

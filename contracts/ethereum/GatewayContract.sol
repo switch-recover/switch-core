@@ -101,7 +101,7 @@ contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk 
     }
 
     /// @notice verifies the proof, and confirms that it contains the new recipient.
-    function verifyZkProof(bytes calldata proof, address _recipient) internal {
+    function verifyZkProof(bytes calldata proof, address _recipient) public view returns (bool isValid) {
         uint[] memory pubSignals = new uint[](2);
         pubSignals[0] = uint256(hashedPassword);
         pubSignals[1] = uint256(uint160(_recipient));
@@ -112,6 +112,7 @@ contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk 
         // console.log("called");
         // console.log("result",result);
         require(this.verifyProof(proof,pubSignals), "Proof verification failed");
+        return true;
     }
 
 
@@ -198,7 +199,32 @@ contract GatewayContract {
         );
     }
 
-    function deployRecoveryContract(address recipient, uint256 minBlocks)
+    function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword)
+        external
+    {
+        require(
+            eoaToRecoveryContract[msg.sender] == address(0x0),
+            "Recovery contract exists"
+        );
+        address _recoveryContractAddress = address(
+            new RecoveryContractZkProof(
+                address(0x0),
+                minBlocks,
+                msg.sender,
+                address(this),
+                _hashedPassword
+            )
+        );
+        eoaToRecoveryContract[msg.sender] = _recoveryContractAddress;
+        emit NewRecoveryContract(
+            msg.sender,
+            _recoveryContractAddress,
+            block.timestamp,
+            minBlocks
+        );
+    }
+
+        function deployRecoveryContract(address recipient, uint256 minBlocks)
         external
     {
         require(
