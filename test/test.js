@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const fs = require("fs");
 const { groth16, plonk } = require("snarkjs");
 
-let account1, account2;
+let account1, account2, account3;
 
 function unstringifyBigInts(o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
@@ -25,104 +25,135 @@ function unstringifyBigInts(o) {
     }
 }
 
-
 describe("Recovery contract deployment", function () {
     beforeEach(async function () {
-        [account1,account2] = await ethers.getSigners();
+        [account1,account2, account3] = await ethers.getSigners();
         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
         recoveryContractFactory = await RecoveryContractFactory.deploy();
         
         GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000",recoveryContractFactory.address);
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000",account3.address,recoveryContractFactory.address);
         await gatewayContract.deployed();
 
         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
     });
 
-    it("Should return true for correct proof", async function () {})
+    it("Should deploy a recovery contract", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+        expect(await recoveryContract.recipient()).to.equal(account2.address);
+    })
+
+    it("Should deploy a recovery contract with trusted agents", async function () {
+        await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect().to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContractTrustedAgents = await ethers.getContractFactory("RecoveryContractTrustedAgents");
+        const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
+
+        expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
+        expect(await recoveryContractTrustedAgents.legalDocumentsHash()).to.equal("abcdedfg");
+    })
+
+    it("Should deploy a recovery contract with zk recovery", async function () {
+        await gatewayContract.deployRecoveryContractZk(1000, 2893183928);
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+        expect(await recoveryContractZkProof.hashedPassword()).to.equal(2893183928);
+    })
 })
 
-describe("SecretClaim with PLONK", function () {
-    let Verifier;
-    let verifier;
+// describe("SecretClaim with PLONK", function () {
+//     let Verifier;
+//     let verifier;
 
-    beforeEach(async function () {
-        [account1,account2] = await ethers.getSigners();
-        Verifier = await ethers.getContractFactory("SecretClaimVerifier_plonk");
-        verifier = await Verifier.deploy();
-        await verifier.deployed();
-    });
+//     beforeEach(async function () {
+//         [account1,account2] = await ethers.getSigners();
+//         Verifier = await ethers.getContractFactory("SecretClaimVerifier_plonk");
+//         verifier = await Verifier.deploy();
+//         await verifier.deployed();
+//     });
 
-    it("Should return true for correct proof", async function () {
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient":"0x34B716A2B8bFeBC37322f6E33b3472D71BBc5631"}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-        // console.log(publicSignals[0]);
+//     it("Should return true for correct proof", async function () {
+//         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient":"0x34B716A2B8bFeBC37322f6E33b3472D71BBc5631"}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+//         // console.log(publicSignals[0]);
 
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+//         const editedPublicSignals = unstringifyBigInts(publicSignals);
+//         const editedProof = unstringifyBigInts(proof);
+//         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
 
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
-        expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
-    });
-    it("Should return false for invalid proof", async function () {
-        const proof = "0x00";
-        expect(await verifier.verifyProof(proof, [0,1])).to.be.false;
-    });
+//         const argv = calldata.replace(/["[\]\s]/g, "").split(',')
+//         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
+//     });
+//     it("Should return false for invalid proof", async function () {
+//         const proof = "0x00";
+//         expect(await verifier.verifyProof(proof, [0,1])).to.be.false;
+//     });
 
-    it("Should return true for correct proof on the smart contract", async function () {
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+//     it("Should return true for correct proof on the smart contract", async function () {
+//         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
 
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+//         const editedPublicSignals = unstringifyBigInts(publicSignals);
+//         const editedProof = unstringifyBigInts(proof);
+//         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
 
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
+//         const argv = calldata.replace(/["[\]\s]/g, "").split(',')
 
-        // console.log("test", [argv[1],argv[2]]);
-        expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
+//         // console.log("test", [argv[1],argv[2]]);
+//         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
-        RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
-        recoveryContractFactory = await RecoveryContractFactory.deploy();
+//         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+//         recoveryContractFactory = await RecoveryContractFactory.deploy();
 
-        GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
-        await gatewayContract.deployed();
+//         GatewayContract = await ethers.getContractFactory("GatewayContract");
+//         gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
+//         await gatewayContract.deployed();
 
-        await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
+//         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
 
-        await gatewayContract.deployRecoveryContractZk(10, argv[1]);
-        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
+//         await gatewayContract.deployRecoveryContractZk(10, argv[1]);
+//         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
-        // has to match the pre-inserted account2 into the proof
-        await recoveryContract.connect(account1).verifyZkProof(argv[0], account2.address);
-    });
+//         // has to match the pre-inserted account2 into the proof
+//         await recoveryContract.connect(account1).verifyZkProof(argv[0], account2.address);
+//     });
 
-    it("Should fail if the proof doesn't match the defined address", async function () {
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+//     it("Should fail if the proof doesn't match the defined address", async function () {
+//         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
 
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+//         const editedPublicSignals = unstringifyBigInts(publicSignals);
+//         const editedProof = unstringifyBigInts(proof);
+//         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
 
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
-        expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
+//         const argv = calldata.replace(/["[\]\s]/g, "").split(',')
+//         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
-        RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
-        recoveryContractFactory = await RecoveryContractFactory.deploy();
+//         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+//         recoveryContractFactory = await RecoveryContractFactory.deploy();
 
-        GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
-        await gatewayContract.deployed();
+//         GatewayContract = await ethers.getContractFactory("GatewayContract");
+//         gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
+//         await gatewayContract.deployed();
 
-        await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
+//         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
 
-        await gatewayContract.deployRecoveryContractZk(10, argv[1]);
-        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
+//         await gatewayContract.deployRecoveryContractZk(10, argv[1]);
+//         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         const recoveryContract = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
-        await expect(recoveryContract.connect(account1).verifyZkProof(argv[0], account1.address)).to.revertedWith("Proof verification failed");
-    });
-});
+//         await expect(recoveryContract.connect(account1).verifyZkProof(argv[0], account1.address)).to.revertedWith("Proof verification failed");
+//     });
+// });
