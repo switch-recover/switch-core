@@ -6,6 +6,11 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "eoa",
+          "type": "address"
+        },
+        {
           "internalType": "uint256",
           "name": "minBlocks",
           "type": "uint256"

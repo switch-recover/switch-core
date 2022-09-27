@@ -18,10 +18,15 @@ interface IStarknetCore {
 
 interface IRecoveryContract {
     function claimAssets(address[] calldata erc20contracts, address caller, address to) external;
+    function activateRecovery(uint256 blocks) external;
+}
+
+interface IRecoveryContractZk {
+    function activateRecovery(uint256 blocks, bytes calldata proof, address _recipient) external;
 }
 
 interface IRecoveryContractFactory {
-    function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword) external returns (address recoveryContract);
+    function deployRecoveryContractZk(address eoa, uint256 minBlocks, uint256 _hashedPassword) external returns (address recoveryContract);
 }
 
 contract GatewayContract {
@@ -63,7 +68,7 @@ contract GatewayContract {
         trustedAgents = _trustedAgents;
     }
 
-    function receiveFromStorageProver(uint256 userAddress, uint256 blocks)
+    function activateRecovery(uint256 userAddress, uint256 blocks)
         external
     {
         // Construct the withdrawal message's payload.
@@ -77,10 +82,10 @@ contract GatewayContract {
 
         address conversion = address(uint160(userAddress));
         address _recoveryContractAddress = eoaToRecoveryContract[conversion];
-        RecoveryContract(_recoveryContractAddress).activateRecovery(blocks);
+        IRecoveryContract(_recoveryContractAddress).activateRecovery(blocks);
     }
 
-    function receiveFromStorageProverZkProof(uint256 userAddress, uint256 blocks, bytes calldata proof)
+    function activateRecoveryZkProof(uint256 userAddress, uint256 blocks, bytes calldata proof, address recipient)
         external
     {
         // Construct the withdrawal message's payload.
@@ -94,7 +99,7 @@ contract GatewayContract {
 
         address conversion = address(uint160(userAddress));
         address _recoveryContractAddress = eoaToRecoveryContract[conversion];
-        RecoveryContractZkProof(_recoveryContractAddress).activateRecovery(blocks, proof, msg.sender);
+        IRecoveryContractZk(_recoveryContractAddress).activateRecovery(blocks, proof, recipient);
     }
 
     function terminateRecoveryContract() external {
@@ -135,8 +140,8 @@ contract GatewayContract {
             new RecoveryContractTrustedAgents(
                 trustedAgents,
                 minBlocks,
-                msg.sender,
                 address(this),
+                msg.sender,
                 _legalDocumentsHash
             )
         );
@@ -152,7 +157,7 @@ contract GatewayContract {
     function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword)
         external noExistingRecovery
     {
-        address _recoveryContractAddress = IRecoveryContractFactory(recoveryContractFactory).deployRecoveryContractZk(minBlocks, _hashedPassword);
+        address _recoveryContractAddress = IRecoveryContractFactory(recoveryContractFactory).deployRecoveryContractZk(msg.sender, minBlocks, _hashedPassword);
         eoaToRecoveryContract[msg.sender] = _recoveryContractAddress;
         emit NewRecoveryContract(
             msg.sender,

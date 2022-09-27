@@ -23,13 +23,13 @@ contract RecoveryContractFactory {
         gatewayContract = _gatewayContract;
     }
 
-    function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword) external onlyGatewayContract returns (address recoveryContract){
+    function deployRecoveryContractZk(address eoa, uint256 minBlocks, uint256 _hashedPassword) external onlyGatewayContract returns (address recoveryContract){
         address _recoveryContractAddress = address(
             new RecoveryContractZkProof(
                 address(0x0),
                 minBlocks,
-                msg.sender,
-                address(this),
+                gatewayContract,
+                eoa,
                 _hashedPassword
             )
         );

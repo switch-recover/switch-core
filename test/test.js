@@ -25,20 +25,99 @@ function unstringifyBigInts(o) {
     }
 }
 
-describe("Recovery contract deployment", function () {
+// describe("Recovery contract deployment", function () {
+//     beforeEach(async function () {
+//         [account1,account2, account3] = await ethers.getSigners();
+//         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+//         recoveryContractFactory = await RecoveryContractFactory.deploy();
+        
+//         GatewayContract = await ethers.getContractFactory("GatewayContract");
+//         gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000",account3.address,recoveryContractFactory.address);
+//         await gatewayContract.deployed();
+
+//         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
+//     });
+
+//     it("Should deploy a recovery contract", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+//         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+//         expect(await recoveryContract.recipient()).to.equal(account2.address);
+//     })
+
+//     it("Should deploy a recovery contract with trusted agents", async function () {
+//         await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect().to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContractTrustedAgents = await ethers.getContractFactory("RecoveryContractTrustedAgents");
+//         const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
+
+//         expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
+//         expect(await recoveryContractTrustedAgents.legalDocumentsHash()).to.equal("abcdedfg");
+//     })
+
+//     it("Should deploy a recovery contract with zk recovery", async function () {
+//         await gatewayContract.deployRecoveryContractZk(1000, 2893183928);
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+//         const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+//         expect(await recoveryContractZkProof.hashedPassword()).to.equal(2893183928);
+//     })
+
+//     it("Shouldn't deploy a new recovery contract if already existing for EOA", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+//         await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
+//         await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
+//         await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
+//     })
+
+//     it("Should terminate a recovery contract and allow for the creation of a new one", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+//         await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
+//         await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
+//         await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
+
+//         await gatewayContract.terminateRecoveryContract();
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+//     })
+
+//     it("Should return an exception if terminating an non-existing recovery contract", async function () {
+//         await expect(gatewayContract.terminateRecoveryContract()).to.be.revertedWith("No existing recovery");
+//     })
+// })
+
+describe("Recovery contract recovery", function () {
     beforeEach(async function () {
         [account1,account2, account3] = await ethers.getSigners();
         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
         recoveryContractFactory = await RecoveryContractFactory.deploy();
+
+        StarknetCoreFake = await ethers.getContractFactory("StarknetCoreFake");
+        starknetCoreFake = await StarknetCoreFake.deploy();
         
         GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000",account3.address,recoveryContractFactory.address);
+        gatewayContract = await GatewayContract.deploy(starknetCoreFake.address,account3.address,recoveryContractFactory.address);
         await gatewayContract.deployed();
+
+        gatewayContract.setProverAddress("0x1234500000000000000000000000000000000000");
 
         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
     });
 
-    it("Should deploy a recovery contract", async function () {
+    it("Should recover from a recovery contract", async function () {
         await gatewayContract.deployRecoveryContract(account2.address, 1000);
         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
@@ -46,10 +125,37 @@ describe("Recovery contract deployment", function () {
         const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
 
-        expect(await recoveryContract.recipient()).to.equal(account2.address);
+        expect(await recoveryContract.isActive()).to.equal(false);
+        await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
+        expect(await recoveryContract.isActive()).to.equal(true);
     })
 
-    it("Should deploy a recovery contract with trusted agents", async function () {
+    it("Should fail the recovery if the L2 message cannot be consumed", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+        expect(await recoveryContract.isActive()).to.equal(false);
+        await starknetCoreFake.toggleIsValid();
+        await expect (gatewayContract.activateRecovery(BigInt(account2.address), 1000)).to.be.revertedWith("INVALID_MESSAGE_TO_CONSUME");
+    })
+
+    it("Should fail the recovery if the minBlocks is too small", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+        expect(await recoveryContract.isActive()).to.equal(false);
+        await expect (gatewayContract.activateRecovery(BigInt(account1.address), 100)).to.be.revertedWith("Inactivity too short");
+    })
+
+    it("Should recover from a recovery contract with trusted agents", async function () {
         await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
         expect().to.not.equal("0x0000000000000000000000000000000000000000");
@@ -58,44 +164,29 @@ describe("Recovery contract deployment", function () {
         const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
 
         expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
-        expect(await recoveryContractTrustedAgents.legalDocumentsHash()).to.equal("abcdedfg");
+        expect(await recoveryContractTrustedAgents.isActive()).to.equal(false);
+        await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
+        expect(await recoveryContractTrustedAgents.isActive()).to.equal(true);
     })
 
-    it("Should deploy a recovery contract with zk recovery", async function () {
-        await gatewayContract.deployRecoveryContractZk(1000, 2893183928);
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+    it("Should recover from a recovery contract with zk recovery", async function () {
+        // The following code is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+        const editedPublicSignals = unstringifyBigInts(publicSignals);
+        const editedProof = unstringifyBigInts(proof);
+        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
 
-        const RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        await gatewayContract.deployRecoveryContractZk(1000, argv[1]);
+        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
         const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
-        expect(await recoveryContractZkProof.hashedPassword()).to.equal(2893183928);
-    })
+        expect(await recoveryContractZkProof.hashedPassword()).to.equal(argv[1]);
+        expect(await recoveryContractZkProof.isActive()).to.equal(false);
 
-    it("Shouldn't deploy a new recovery contract if already existing for EOA", async function () {
-        await gatewayContract.deployRecoveryContract(account2.address, 1000);
-
-        await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
-        await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
-        await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
-    })
-
-    it("Should terminate a recovery contract and allow for the creation of a new one", async function () {
-        await gatewayContract.deployRecoveryContract(account2.address, 1000);
-
-        await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
-        await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
-        await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
-
-        await gatewayContract.terminateRecoveryContract();
-        await gatewayContract.deployRecoveryContract(account2.address, 1000);
-
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
-    })
-
-    it("Should return an exception if terminating an non-existing recovery contract", async function () {
-        await expect(gatewayContract.terminateRecoveryContract()).to.be.revertedWith("No existing recovery");
+        await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, argv[0], account2.address);
+        expect(await recoveryContractZkProof.isActive()).to.equal(true);
     })
 })
 
