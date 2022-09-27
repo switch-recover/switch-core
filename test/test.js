@@ -25,6 +25,17 @@ function unstringifyBigInts(o) {
     }
 }
 
+describe("Recovery contract deploymebt", function () {
+    beforeEach(async function () {
+        [account1,account2] = await ethers.getSigners();
+        RecoveryContract = await ethers.getContractFactory("GatewayContract");
+        recoveryContract = await RecoveryContract.deploy();
+        await recoveryContract.deployed();
+    });
+
+
+})
+
 describe("SecretClaim with PLONK", function () {
     let Verifier;
     let verifier;

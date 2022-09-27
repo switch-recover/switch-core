@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "./SecretClaimVerifier_plonk.sol";
-import "./IERC20.sol";
+import "./RecoveryContract.sol";
+import "./RecoveryContractTrustedAgents.sol";
+import "./RecoveryContractZk.sol";
 import "hardhat/console.sol";
 
 interface IStarknetCore {
@@ -14,113 +15,8 @@ interface IStarknetCore {
     ) external returns (bytes32);
 }
 
-contract RecoveryContract {
-    address public recipient;
-    address public EOA;
-    address public gatewayContract;
-    uint256 public minBlocks;
-    bool public isActive;
-    bool public isTerminated;
-
-    constructor(
-        address _recipient,
-        uint256 _minBlocks,
-        address _gatewayContract,
-        address _EOA
-    ) {
-        recipient = _recipient;
-        EOA = _EOA;
-        minBlocks = _minBlocks;
-        gatewayContract = _gatewayContract;
-    }
-
-    function claimAssets(address[] calldata erc20contracts, address to)
-        external
-    {
-        require(msg.sender == recipient, "Only recipient");
-        require(isActive, "Not active");
-        require(!isTerminated, "Already terminated");
-        for (uint256 i = 0; i < erc20contracts.length; i++) {
-            address erc20contract = erc20contracts[i];
-            uint256 balance = IERC20(erc20contract).allowance(
-                EOA,
-                address(this)
-            );
-            if (balance > 0) {
-                IERC20(erc20contract).transferFrom(EOA, to, balance);
-            }
-        }
-    }
-
-    function terminateRecoveryContract() external {
-        require(msg.sender == gatewayContract, "Not gateway");
-        isTerminated = true;
-    }
-
-    function activateRecovery(uint256 blocks) external {
-        require(msg.sender == gatewayContract, "Not gateway");
-        require(!isActive, "Already active");
-        require(!isTerminated, "Already terminated");
-        require(blocks >= minBlocks, "Inactivity too short");
-        isActive = true;
-        emit ActiveRecovery(address(this), recipient, block.timestamp);
-    }
-
-    event ActiveRecovery(
-        address contractAddress,
-        address recipient,
-        uint256 activationTime
-    );
-}
-
-contract RecoveryContractTrustedAgents is RecoveryContract {
-    string public legalDocumentsHash;
-
-    constructor(
-        address _recipient,
-        uint256 _minBlocks,
-        address _gatewayContract,
-        address _EOA,
-        string memory _legalDocumentsHash
-    ) RecoveryContract ( _recipient,  _minBlocks,  _gatewayContract , _EOA  ) {
-        legalDocumentsHash = _legalDocumentsHash;
-    }
-}
-
-contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk {
-    uint public hashedPassword;
-
-    constructor(
-        address _recipient, // default set to 0x
-        uint256 _minBlocks,
-        address _gatewayContract,
-        address _EOA,
-        uint _hashedPassword
-    ) RecoveryContract(_recipient, _minBlocks, _gatewayContract, _EOA) {
-        hashedPassword = _hashedPassword;
-    }
-
-    /// @notice verifies the validity of the proof, and confirms that the proof contains the new recipient.
-    function verifyZkProof(bytes calldata proof, address _recipient) public view returns (bool isValid) {
-        uint[] memory pubSignals = new uint[](2);
-        pubSignals[0] = uint256(hashedPassword);
-        pubSignals[1] = uint256(uint160(_recipient));
-        require(this.verifyProof(proof,pubSignals), "Proof verification failed");
-        return true;
-    }
-
-
-    function activateRecovery(uint256 blocks, bytes calldata proof, address _recipient) external {
-        require(msg.sender == gatewayContract, "Not gateway");
-        require(_recipient != address(0x0), "Null address");
-        require(!isActive, "Already active");
-        require(!isTerminated, "Already terminated");
-        require(blocks >= minBlocks, "Inactivity too short");
-        verifyZkProof(proof, _recipient);
-        recipient = _recipient;
-        isActive = true;
-        emit ActiveRecovery(address(this), recipient, block.timestamp);
-    }
+interface IRecoveryContract {
+    function claimAssets(address[] calldata erc20contracts, address caller, address to) external;
 }
 
 contract GatewayContract {
@@ -138,14 +34,25 @@ contract GatewayContract {
         trustedAgents = _trustedAgents;
     }
 
-    function setProverAddress(uint256 _l2StorageProverAddress) external {
+    modifier noExistingRecovery {
+        require(
+            eoaToRecoveryContract[msg.sender] != address(0x0),
+            "Recovery don't exist"
+        );
+        _;
+    }
+
+    modifier onlyOwner {
         require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+    function setProverAddress(uint256 _l2StorageProverAddress) external onlyOwner {
         l2StorageProverAddress = _l2StorageProverAddress;
         proverAddressIsSet = true;
     }
 
-    function updateTrustedAgents(address  _trustedAgents) external {
-        require(msg.sender == owner, "Only owner");
+    function updateTrustedAgents(address  _trustedAgents) external onlyOwner{
         trustedAgents = _trustedAgents;
     }
 
@@ -194,12 +101,8 @@ contract GatewayContract {
     }
 
     function deployRecoveryContract(address recipient, uint256 minBlocks)
-        external
+        external noExistingRecovery
     {
-        require(
-            eoaToRecoveryContract[msg.sender] == address(0x0),
-            "Recovery contract exists"
-        );
         address _recoveryContractAddress = address(
             new RecoveryContract(
                 recipient,
@@ -218,12 +121,8 @@ contract GatewayContract {
     }
 
     function deployRecoveryContractTrustedAgents(uint256 minBlocks, string memory _legalDocumentsHash)
-        external
+        external noExistingRecovery
     {
-        require(
-            eoaToRecoveryContract[msg.sender] == address(0x0),
-            "Recovery contract exists"
-        );
         address _recoveryContractAddress = address(
             new RecoveryContractTrustedAgents(
                 trustedAgents,
@@ -243,12 +142,8 @@ contract GatewayContract {
     }
 
     function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword)
-        external
+        external noExistingRecovery
     {
-        require(
-            eoaToRecoveryContract[msg.sender] == address(0x0),
-            "Recovery contract exists"
-        );
         address _recoveryContractAddress = address(
             new RecoveryContractZkProof(
                 address(0x0),
@@ -265,6 +160,15 @@ contract GatewayContract {
             block.timestamp,
             minBlocks
         );
+    }
+
+    function claimAssets(address[] calldata erc20contracts, address to) external {
+        address recoveryContract = eoaToRecoveryContract[msg.sender];
+        require(
+            recoveryContract != address(0x0),
+            "Recovery doesn't exist"
+        );
+        IRecoveryContract(recoveryContract).claimAssets(erc20contracts, msg.sender, to);
     }
 
     event NewRecoveryContract(
