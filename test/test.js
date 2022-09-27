@@ -4,7 +4,6 @@ const fs = require("fs");
 const { groth16, plonk } = require("snarkjs");
 
 let account1, account2, account3;
-const MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
 function unstringifyBigInts(o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
