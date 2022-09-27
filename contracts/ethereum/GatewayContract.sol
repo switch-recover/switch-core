@@ -99,7 +99,8 @@ contract GatewayContract {
 
     function terminateRecoveryContract() external {
         address recoveryContractAddress = eoaToRecoveryContract[msg.sender];
-        RecoveryContract(recoveryContractAddress).terminateRecoveryContract();
+        require(recoveryContractAddress != address(0x0), "No existing recovery");
+        delete eoaToRecoveryContract[msg.sender];
         emit TerminateRecoveryContract(
             msg.sender,
             recoveryContractAddress,

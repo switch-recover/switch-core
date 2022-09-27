@@ -71,9 +71,35 @@ describe("Recovery contract deployment", function () {
 
         expect(await recoveryContractZkProof.hashedPassword()).to.equal(2893183928);
     })
+
+    it("Shouldn't deploy a new recovery contract if already existing for EOA", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+        await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
+        await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
+        await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
+    })
+
+    it("Should terminate a recovery contract and allow for the creation of a new one", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+        await expect(gatewayContract.deployRecoveryContract(account2.address, 1000)).to.be.revertedWith("Recovery already exists");
+        await expect(gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg")).to.be.revertedWith("Recovery already exists");
+        await expect(gatewayContract.deployRecoveryContractZk(1000, 2893183928)).to.be.revertedWith("Recovery already exists");
+
+        await gatewayContract.terminateRecoveryContract();
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+    })
+
+    it("Should return an exception if terminating an non-existing recovery contract", async function () {
+        await expect(gatewayContract.terminateRecoveryContract()).to.be.revertedWith("No existing recovery");
+    })
 })
 
-// describe("SecretClaim with PLONK", function () {
+// describe("Recovery contract using zk proof (PLONK)", function () {
 //     let Verifier;
 //     let verifier;
 

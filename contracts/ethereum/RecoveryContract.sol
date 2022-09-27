@@ -11,7 +11,6 @@ contract RecoveryContract {
     address public gatewayContract;
     uint256 public minBlocks;
     bool public isActive;
-    bool public isTerminated;
 
     constructor(
         address _recipient,
@@ -35,7 +34,6 @@ contract RecoveryContract {
     {
         require(caller == recipient, "Only recipient");
         require(isActive, "Not active");
-        require(!isTerminated, "Already terminated");
         for (uint256 i = 0; i < erc20contracts.length; i++) {
             address erc20contract = erc20contracts[i];
             uint256 balance = IERC20(erc20contract).allowance(
@@ -48,13 +46,9 @@ contract RecoveryContract {
         }
     }
 
-    function terminateRecoveryContract() external onlyGateway {
-        isTerminated = true;
-    }
 
     function activateRecovery(uint256 blocks) external onlyGateway {
         require(!isActive, "Already active");
-        require(!isTerminated, "Already terminated");
         require(blocks >= minBlocks, "Inactivity too short");
         isActive = true;
         emit ActiveRecovery(address(this), recipient, block.timestamp);

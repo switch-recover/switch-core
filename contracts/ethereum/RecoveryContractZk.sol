@@ -31,7 +31,6 @@ contract RecoveryContractZkProof is RecoveryContract, SecretClaimVerifier_plonk 
     function activateRecovery(uint256 blocks, bytes calldata proof, address _recipient) external onlyGateway {
         require(_recipient != address(0x0), "Null address");
         require(!isActive, "Already active");
-        require(!isTerminated, "Already terminated");
         require(blocks >= minBlocks, "Inactivity too short");
         verifyZkProof(proof, _recipient);
         recipient = _recipient;
