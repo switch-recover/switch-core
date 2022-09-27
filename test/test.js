@@ -479,3 +479,5 @@ describe("Zk proof testing (PLONK)", function () {
         await expect(recoveryContract.connect(account1).verifyZkProof(argv[0], account1.address)).to.revertedWith("Proof verification failed");
     });
 });
+
+// TODO: ADD TESTS TO ALL THE UPDATE RELATED CONTRACTS
