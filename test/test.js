@@ -170,23 +170,48 @@ describe("Recovery contract recovery", function () {
     })
 
     it("Should recover from a recovery contract with zk recovery", async function () {
-        // The following code is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+        /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
         const editedPublicSignals = unstringifyBigInts(publicSignals);
         const editedProof = unstringifyBigInts(proof);
         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',')
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',');
+        const hashedPassword = argv[1];
+        const zkProof = argv[0];
+        ///
 
-        await gatewayContract.deployRecoveryContractZk(1000, argv[1]);
+        await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
         const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
-        expect(await recoveryContractZkProof.hashedPassword()).to.equal(argv[1]);
+        expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
         expect(await recoveryContractZkProof.isActive()).to.equal(false);
 
-        await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, argv[0], account2.address);
+        await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account2.address);
         expect(await recoveryContractZkProof.isActive()).to.equal(true);
+    })
+
+    it("Should fail tp recover from a recovery contract with zk recovery if the recipient is wrong", async function () {
+        /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+        const editedPublicSignals = unstringifyBigInts(publicSignals);
+        const editedProof = unstringifyBigInts(proof);
+        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',');
+        const hashedPassword = argv[1];
+        const zkProof = argv[0];
+        ///
+
+        await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
+        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+        expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
+        expect(await recoveryContractZkProof.isActive()).to.equal(false);
+
+        await expect(gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account3.address)).to.be.revertedWith("Proof verification failed");
     })
 })
 
