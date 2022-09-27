@@ -25,15 +25,21 @@ function unstringifyBigInts(o) {
     }
 }
 
-describe("Recovery contract deploymebt", function () {
+
+describe("Recovery contract deployment", function () {
     beforeEach(async function () {
         [account1,account2] = await ethers.getSigners();
-        RecoveryContract = await ethers.getContractFactory("GatewayContract");
-        recoveryContract = await RecoveryContract.deploy();
-        await recoveryContract.deployed();
+        RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+        recoveryContractFactory = await RecoveryContractFactory.deploy();
+        
+        GatewayContract = await ethers.getContractFactory("GatewayContract");
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000",recoveryContractFactory.address);
+        await gatewayContract.deployed();
+
+        await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
     });
 
-
+    it("Should return true for correct proof", async function () {})
 })
 
 describe("SecretClaim with PLONK", function () {
@@ -75,9 +81,14 @@ describe("SecretClaim with PLONK", function () {
         // console.log("test", [argv[1],argv[2]]);
         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
+        RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+        recoveryContractFactory = await RecoveryContractFactory.deploy();
+
         GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000");
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
         await gatewayContract.deployed();
+
+        await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
 
         await gatewayContract.deployRecoveryContractZk(10, argv[1]);
         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
@@ -98,9 +109,14 @@ describe("SecretClaim with PLONK", function () {
         const argv = calldata.replace(/["[\]\s]/g, "").split(',')
         expect(await verifier.verifyProof(argv[0], [argv[1],argv[2]])).to.be.true;
 
+        RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+        recoveryContractFactory = await RecoveryContractFactory.deploy();
+
         GatewayContract = await ethers.getContractFactory("GatewayContract");
-        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000");
+        gatewayContract = await GatewayContract.deploy("0x0000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000", recoveryContractFactory.address);
         await gatewayContract.deployed();
+
+        await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
 
         await gatewayContract.deployRecoveryContractZk(10, argv[1]);
         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
@@ -109,5 +125,4 @@ describe("SecretClaim with PLONK", function () {
 
         await expect(recoveryContract.connect(account1).verifyZkProof(argv[0], account1.address)).to.revertedWith("Proof verification failed");
     });
-
 });

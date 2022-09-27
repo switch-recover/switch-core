@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "./RecoveryContractFactory.sol";
 import "./RecoveryContract.sol";
 import "./RecoveryContractTrustedAgents.sol";
 import "./RecoveryContractZk.sol";
@@ -19,25 +20,31 @@ interface IRecoveryContract {
     function claimAssets(address[] calldata erc20contracts, address caller, address to) external;
 }
 
+interface IRecoveryContractFactory {
+    function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword) external returns (address recoveryContract);
+}
+
 contract GatewayContract {
     // The StarkNet core contract
     IStarknetCore starknetCore;
     address public owner;
     address public trustedAgents;
+    address public recoveryContractFactory;
     uint256 public l2StorageProverAddress;
     bool public proverAddressIsSet = false;
     mapping(address => address) public eoaToRecoveryContract;
 
-    constructor(IStarknetCore _starknetCore, address _trustedAgents) {
+    constructor(IStarknetCore _starknetCore, address _trustedAgents, address _recoveryContractFactory) {
         starknetCore = _starknetCore;
         owner = msg.sender;
         trustedAgents = _trustedAgents;
+        recoveryContractFactory = _recoveryContractFactory;
     }
 
     modifier noExistingRecovery {
         require(
-            eoaToRecoveryContract[msg.sender] != address(0x0),
-            "Recovery don't exist"
+            eoaToRecoveryContract[msg.sender] == address(0x0),
+            "Recovery already exists"
         );
         _;
     }
@@ -144,15 +151,7 @@ contract GatewayContract {
     function deployRecoveryContractZk(uint256 minBlocks, uint256 _hashedPassword)
         external noExistingRecovery
     {
-        address _recoveryContractAddress = address(
-            new RecoveryContractZkProof(
-                address(0x0),
-                minBlocks,
-                msg.sender,
-                address(this),
-                _hashedPassword
-            )
-        );
+        address _recoveryContractAddress = IRecoveryContractFactory(recoveryContractFactory).deployRecoveryContractZk(minBlocks, _hashedPassword);
         eoaToRecoveryContract[msg.sender] = _recoveryContractAddress;
         emit NewRecoveryContract(
             msg.sender,

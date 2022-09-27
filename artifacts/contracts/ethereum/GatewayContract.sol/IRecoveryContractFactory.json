@@ -1,0 +1,35 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IRecoveryContractFactory",
+  "sourceName": "contracts/ethereum/GatewayContract.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "minBlocks",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_hashedPassword",
+          "type": "uint256"
+        }
+      ],
+      "name": "deployRecoveryContractZk",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "recoveryContract",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
