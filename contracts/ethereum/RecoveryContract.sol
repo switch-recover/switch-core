@@ -29,23 +29,18 @@ contract RecoveryContract {
         _;
     }
 
-    function claimAssets(address[] calldata erc20contracts, address caller, address to)
+    function claimAssets(address[] calldata erc20contracts, uint256[] calldata amounts, address caller, address to)
         external onlyGateway
     {
         require(caller == recipient, "Only recipient");
         require(isActive, "Not active");
+        require(erc20contracts.length == amounts.length, "Wrong length");
         for (uint256 i = 0; i < erc20contracts.length; i++) {
             address erc20contract = erc20contracts[i];
-            uint256 balance = IERC20(erc20contract).allowance(
-                EOA,
-                address(this)
-            );
-            if (balance > 0) {
-                IERC20(erc20contract).transferFrom(EOA, to, balance);
-            }
+            uint256 amount = amounts[i];
+            IERC20(erc20contract).transferFrom(EOA, to, amount);
         }
     }
-
 
     function activateRecovery(uint256 blocks) external onlyGateway {
         require(!isActive, "Already active");

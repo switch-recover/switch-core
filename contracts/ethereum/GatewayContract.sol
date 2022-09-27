@@ -17,7 +17,7 @@ interface IStarknetCore {
 }
 
 interface IRecoveryContract {
-    function claimAssets(address[] calldata erc20contracts, address caller, address to) external;
+    function claimAssets(address[] calldata erc20contracts, uint256[] calldata amounts, address caller, address to) external;
     function activateRecovery(uint256 blocks) external;
 }
 
@@ -167,13 +167,13 @@ contract GatewayContract {
         );
     }
 
-    function claimAssets(address[] calldata erc20contracts, address to) external {
-        address recoveryContract = eoaToRecoveryContract[msg.sender];
+    function claimAssets(address[] calldata erc20contracts, uint256[] calldata amounts, address to, address eoa) external {
+        address recoveryContract = eoaToRecoveryContract[eoa];
         require(
             recoveryContract != address(0x0),
             "Recovery doesn't exist"
         );
-        IRecoveryContract(recoveryContract).claimAssets(erc20contracts, msg.sender, to);
+        IRecoveryContract(recoveryContract).claimAssets(erc20contracts, amounts, msg.sender, to);
     }
 
     event NewRecoveryContract(

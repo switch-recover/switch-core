@@ -4,6 +4,7 @@ const fs = require("fs");
 const { groth16, plonk } = require("snarkjs");
 
 let account1, account2, account3;
+const MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
 function unstringifyBigInts(o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
@@ -99,7 +100,123 @@ function unstringifyBigInts(o) {
 //     })
 // })
 
-describe("Recovery contract recovery", function () {
+// describe("Recovery contract recovery steps", function () {
+//     beforeEach(async function () {
+//         [account1,account2, account3] = await ethers.getSigners();
+//         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
+//         recoveryContractFactory = await RecoveryContractFactory.deploy();
+
+//         StarknetCoreFake = await ethers.getContractFactory("StarknetCoreFake");
+//         starknetCoreFake = await StarknetCoreFake.deploy();
+        
+//         GatewayContract = await ethers.getContractFactory("GatewayContract");
+//         gatewayContract = await GatewayContract.deploy(starknetCoreFake.address,account3.address,recoveryContractFactory.address);
+//         await gatewayContract.deployed();
+
+//         gatewayContract.setProverAddress("0x1234500000000000000000000000000000000000");
+
+//         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
+//     });
+
+//     it("Should recover from a recovery contract", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+//         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+//         expect(await recoveryContract.isActive()).to.equal(false);
+//         await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
+//         expect(await recoveryContract.isActive()).to.equal(true);
+//     })
+
+//     it("Should fail the recovery if the L2 message cannot be consumed", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+//         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+//         expect(await recoveryContract.isActive()).to.equal(false);
+//         await starknetCoreFake.toggleIsValid();
+//         await expect (gatewayContract.activateRecovery(BigInt(account2.address), 1000)).to.be.revertedWith("INVALID_MESSAGE_TO_CONSUME");
+//     })
+
+//     it("Should fail the recovery if the minBlocks is too small", async function () {
+//         await gatewayContract.deployRecoveryContract(account2.address, 1000);
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+//         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+//         expect(await recoveryContract.isActive()).to.equal(false);
+//         await expect (gatewayContract.activateRecovery(BigInt(account1.address), 100)).to.be.revertedWith("Inactivity too short");
+//     })
+
+//     it("Should recover from a recovery contract with trusted agents", async function () {
+//         await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         expect().to.not.equal("0x0000000000000000000000000000000000000000");
+
+//         const RecoveryContractTrustedAgents = await ethers.getContractFactory("RecoveryContractTrustedAgents");
+//         const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
+
+//         expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
+//         expect(await recoveryContractTrustedAgents.isActive()).to.equal(false);
+//         await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
+//         expect(await recoveryContractTrustedAgents.isActive()).to.equal(true);
+//     })
+
+//     it("Should recover from a recovery contract with zk recovery", async function () {
+//         /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+//         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+//         const editedPublicSignals = unstringifyBigInts(publicSignals);
+//         const editedProof = unstringifyBigInts(proof);
+//         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+//         const argv = calldata.replace(/["[\]\s]/g, "").split(',');
+//         const hashedPassword = argv[1];
+//         const zkProof = argv[0];
+//         ///
+
+//         await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
+//         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+//         expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
+//         expect(await recoveryContractZkProof.isActive()).to.equal(false);
+
+//         await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account2.address);
+//         expect(await recoveryContractZkProof.isActive()).to.equal(true);
+//     })
+
+//     it("Should fail tp recover from a recovery contract with zk recovery if the recipient is wrong", async function () {
+//         /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+//         const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+//         const editedPublicSignals = unstringifyBigInts(publicSignals);
+//         const editedProof = unstringifyBigInts(proof);
+//         const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+//         const argv = calldata.replace(/["[\]\s]/g, "").split(',');
+//         const hashedPassword = argv[1];
+//         const zkProof = argv[0];
+//         ///
+
+//         await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
+//         RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+//         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+//         const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+
+//         expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
+//         expect(await recoveryContractZkProof.isActive()).to.equal(false);
+
+//         await expect(gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account3.address)).to.be.revertedWith("Proof verification failed");
+//     })
+// })
+
+describe("Recovery contract asset claiming steps", function () {
     beforeEach(async function () {
         [account1,account2, account3] = await ethers.getSigners();
         RecoveryContractFactory = await ethers.getContractFactory("RecoveryContractFactory");
@@ -107,6 +224,13 @@ describe("Recovery contract recovery", function () {
 
         StarknetCoreFake = await ethers.getContractFactory("StarknetCoreFake");
         starknetCoreFake = await StarknetCoreFake.deploy();
+
+        ERC20Fake = await ethers.getContractFactory("ERC20Fake");
+        USDCContract = await ERC20Fake.deploy("USDC", "USDC");
+        DAIContract = await ERC20Fake.deploy("USDC", "USDC");
+
+        USDCContract._mint(account1.address, ethers.utils.parseEther("100"));
+        DAIContract._mint(account1.address, ethers.utils.parseEther("5000"));
         
         GatewayContract = await ethers.getContractFactory("GatewayContract");
         gatewayContract = await GatewayContract.deploy(starknetCoreFake.address,account3.address,recoveryContractFactory.address);
@@ -117,7 +241,7 @@ describe("Recovery contract recovery", function () {
         await recoveryContractFactory.updateGatewayContract(gatewayContract.address);
     });
 
-    it("Should recover from a recovery contract", async function () {
+    it("Should fail claiming if recovery contract is inactive", async function () {
         await gatewayContract.deployRecoveryContract(account2.address, 1000);
         const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
         expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
@@ -126,93 +250,97 @@ describe("Recovery contract recovery", function () {
         const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
 
         expect(await recoveryContract.isActive()).to.equal(false);
+        await expect (gatewayContract.connect(account2).claimAssets([USDCContract.address, DAIContract.address], [0,0], account2.address, account1.address)).to.be.revertedWith("Not active");
+    })
+
+    it("Should claim from a recovery contract", async function () {
+        await gatewayContract.deployRecoveryContract(account2.address, 1000);
+        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+
+        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+
+        expect(Number(await USDCContract.balanceOf(account1.address))).to.equal(Number(ethers.utils.parseEther("100")));
+        expect(Number(await DAIContract.balanceOf(account1.address))).to.equal(Number(ethers.utils.parseEther("5000")));
+
+        await USDCContract.connect(account1).approve(recoveryContract.address, ethers.BigNumber.from(ethers.utils.parseEther("10000000")));
+        await DAIContract.connect(account1).approve(recoveryContract.address, ethers.BigNumber.from(ethers.utils.parseEther("10000000")));
+
+        // expect(await USDCContract.allowance(account1.address, recoveryContract.address)).to.equal(BigNumber.from(MAX_ERC20));
+        // expect(await DAIContract.allowance(account1.address, recoveryContract.address)).to.equal(BigNumber.from(MAX_ERC20));
+
         await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
         expect(await recoveryContract.isActive()).to.equal(true);
+
+        await gatewayContract.connect(account2).claimAssets([USDCContract.address, DAIContract.address], [ethers.utils.parseEther("100"), ethers.utils.parseEther("5000")], account3.address, account1.address);
+
+        expect(await USDCContract.balanceOf(account3.address)).to.equal(ethers.utils.parseEther("100"));
+        expect(await DAIContract.balanceOf(account3.address)).to.equal(ethers.utils.parseEther("5000"));
+        expect(await USDCContract.balanceOf(account1.address)).to.equal(0);
+        expect(await DAIContract.balanceOf(account1.address)).to.equal(0);
     })
 
-    it("Should fail the recovery if the L2 message cannot be consumed", async function () {
-        await gatewayContract.deployRecoveryContract(account2.address, 1000);
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+    // it("Should recover from a recovery contract with trusted agents", async function () {
+    //     await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
+    //     const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+    //     expect().to.not.equal("0x0000000000000000000000000000000000000000");
 
-        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
-        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+    //     const RecoveryContractTrustedAgents = await ethers.getContractFactory("RecoveryContractTrustedAgents");
+    //     const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
 
-        expect(await recoveryContract.isActive()).to.equal(false);
-        await starknetCoreFake.toggleIsValid();
-        await expect (gatewayContract.activateRecovery(BigInt(account2.address), 1000)).to.be.revertedWith("INVALID_MESSAGE_TO_CONSUME");
-    })
+    //     expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
+    //     expect(await recoveryContractTrustedAgents.isActive()).to.equal(false);
+    //     await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
+    //     expect(await recoveryContractTrustedAgents.isActive()).to.equal(true);
+    // })
 
-    it("Should fail the recovery if the minBlocks is too small", async function () {
-        await gatewayContract.deployRecoveryContract(account2.address, 1000);
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
+    // it("Should recover from a recovery contract with zk recovery", async function () {
+    //     /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
+    //     const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
+    //     const editedPublicSignals = unstringifyBigInts(publicSignals);
+    //     const editedProof = unstringifyBigInts(proof);
+    //     const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+    //     const argv = calldata.replace(/["[\]\s]/g, "").split(',');
+    //     const hashedPassword = argv[1];
+    //     const zkProof = argv[0];
+    //     ///
 
-        const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
-        const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
+    //     await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
+    //     RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
+    //     const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+    //     const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
 
-        expect(await recoveryContract.isActive()).to.equal(false);
-        await expect (gatewayContract.activateRecovery(BigInt(account1.address), 100)).to.be.revertedWith("Inactivity too short");
-    })
+    //     expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
+    //     expect(await recoveryContractZkProof.isActive()).to.equal(false);
 
-    it("Should recover from a recovery contract with trusted agents", async function () {
-        await gatewayContract.deployRecoveryContractTrustedAgents(1000, "abcdedfg");
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        expect().to.not.equal("0x0000000000000000000000000000000000000000");
+    //     await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account2.address);
+    //     expect(await recoveryContractZkProof.isActive()).to.equal(true);
+    // })
 
-        const RecoveryContractTrustedAgents = await ethers.getContractFactory("RecoveryContractTrustedAgents");
-        const recoveryContractTrustedAgents = await RecoveryContractTrustedAgents.attach(recoveryContractAddress);
+    // it("Should fail claiming from trusted agents if recipient is incorrect", async function () {
+    //     await gatewayContract.deployRecoveryContract(account2.address, 1000);
+    //     const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+    //     expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
 
-        expect(await recoveryContractTrustedAgents.recipient()).to.equal(account3.address);
-        expect(await recoveryContractTrustedAgents.isActive()).to.equal(false);
-        await gatewayContract.activateRecovery(BigInt(account1.address), 1000);
-        expect(await recoveryContractTrustedAgents.isActive()).to.equal(true);
-    })
+    //     const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+    //     const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
 
-    it("Should recover from a recovery contract with zk recovery", async function () {
-        /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',');
-        const hashedPassword = argv[1];
-        const zkProof = argv[0];
-        ///
+    //     expect(await recoveryContract.isActive()).to.equal(false);
+    //     await expect (gatewayContract.claimAssets).to.be.revertedWith("Not active");
+    // })
 
-        await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
-        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
+    // it("Should fail claiming from zk proof methodology if recipient is incorrect", async function () {
+    //     await gatewayContract.deployRecoveryContract(account2.address, 1000);
+    //     const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
+    //     expect(recoveryContractAddress).to.not.equal("0x0000000000000000000000000000000000000000");
 
-        expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
-        expect(await recoveryContractZkProof.isActive()).to.equal(false);
+    //     const RecoveryContract = await ethers.getContractFactory("RecoveryContract");
+    //     const recoveryContract = await RecoveryContract.attach(recoveryContractAddress);
 
-        await gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account2.address);
-        expect(await recoveryContractZkProof.isActive()).to.equal(true);
-    })
-
-    it("Should fail tp recover from a recovery contract with zk recovery if the recipient is wrong", async function () {
-        /// The following snippet is temp fix to generate the Pedersen Hash (argv[1]) for deployment
-        const { proof, publicSignals } = await plonk.fullProve({"key":"212","secret":"3333", "recipient": account2.address}, "../circuits/SecretClaim.wasm","../circuits/circuit_final.zkey");
-        const editedPublicSignals = unstringifyBigInts(publicSignals);
-        const editedProof = unstringifyBigInts(proof);
-        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
-        const argv = calldata.replace(/["[\]\s]/g, "").split(',');
-        const hashedPassword = argv[1];
-        const zkProof = argv[0];
-        ///
-
-        await gatewayContract.deployRecoveryContractZk(1000, hashedPassword);
-        RecoveryContractZkProof = await ethers.getContractFactory("RecoveryContractZkProof");
-        const recoveryContractAddress = await gatewayContract.eoaToRecoveryContract(account1.address);
-        const recoveryContractZkProof = await RecoveryContractZkProof.attach(recoveryContractAddress);
-
-        expect(await recoveryContractZkProof.hashedPassword()).to.equal(hashedPassword);
-        expect(await recoveryContractZkProof.isActive()).to.equal(false);
-
-        await expect(gatewayContract.activateRecoveryZkProof(BigInt(account1.address), 1000, zkProof, account3.address)).to.be.revertedWith("Proof verification failed");
-    })
+    //     expect(await recoveryContract.isActive()).to.equal(false);
+    //     await expect (gatewayContract.claimAssets).to.be.revertedWith("Not active");
+    // })
 })
 
 // describe("Recovery contract using zk proof (PLONK)", function () {
