@@ -57,8 +57,9 @@ contract RecoveryContractFactory {
         _;
     }
 
-    function updateGatewayContract(address _gatewayContract) external {
+    function setGatewayContract(address _gatewayContract) external {
         require(msg.sender == owner, "Only owner");
+        require(gatewayAddressIsSet == false, "Already set");
         gatewayContract = _gatewayContract;
         gatewayAddressIsSet = true;
     }
