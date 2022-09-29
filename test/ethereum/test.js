@@ -1,8 +1,6 @@
-const { expect } = require("chai")
-const { ethers } = require("hardhat")
-const fs = require("fs")
-const { groth16, plonk } = require("snarkjs")
-const { unstringifyBigInts } = require("../../utils/utils")
+import { expect } from "chai"
+import { ethers } from "hardhat"
+import { groth16, plonk, unstringifyBigInts } from "snarkjs"
 
 let account1, account2, account3
 
