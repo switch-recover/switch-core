@@ -7,6 +7,11 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
           "name": "eoa",
           "type": "address"
         },
@@ -14,14 +19,9 @@
           "internalType": "uint256",
           "name": "minBlocks",
           "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_hashedPassword",
-          "type": "uint256"
         }
       ],
-      "name": "deployRecoveryContractZk",
+      "name": "deployRecoveryContract",
       "outputs": [
         {
           "internalType": "address",

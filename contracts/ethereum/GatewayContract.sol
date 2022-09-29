@@ -89,6 +89,7 @@ contract GatewayContract {
     address public recoveryContractFactory;
     uint256 public l2StorageProverAddress;
     bool public proverAddressIsSet = false;
+    bool public trustedAgentIsSet = false;
     mapping(address => address) public eoaToRecoveryContract;
 
     event ActivateRecoveryContract(
@@ -104,14 +105,9 @@ contract GatewayContract {
         uint256 terminationDate
     );
 
-    constructor(
-        IStarknetCore _starknetCore,
-        address _trustedAgent,
-        address _recoveryContractFactory
-    ) {
+    constructor(IStarknetCore _starknetCore, address _recoveryContractFactory) {
         starknetCore = _starknetCore;
         owner = msg.sender;
-        trustedAgent = _trustedAgent;
         recoveryContractFactory = _recoveryContractFactory;
     }
 
@@ -158,6 +154,7 @@ contract GatewayContract {
      */
     function updateTrustedAgent(address _trustedAgent) external onlyOwner {
         trustedAgent = _trustedAgent;
+        trustedAgentIsSet = true;
     }
 
     /**
