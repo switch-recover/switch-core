@@ -16,7 +16,7 @@ interface IStarknetCore {
     function consumeMessageFromL2(
         uint256 fromAddress,
         uint256[] calldata payload
-    ) external returns (bytes32);
+    ) external;
 }
 
 /**
