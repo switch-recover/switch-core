@@ -78,7 +78,7 @@ async function main() {
     let factoryContractWithSigner = factoryContract.connect(deployer)
     let tx2 = await factoryContractWithSigner.setGatewayContract(gatewayContract.address)
     await tx2.wait()
-    console.log("Set gateway contract address in recovery contract factory, tx: ", tx.hash)
+    console.log("Set gateway contract address in recovery contract factory, tx: ", tx2.hash)
 
     // Write deployment addresses to scripts/deployments.txt
     const deploymentAddresses = {
