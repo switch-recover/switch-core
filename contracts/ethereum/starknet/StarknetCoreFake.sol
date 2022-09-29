@@ -12,7 +12,7 @@ contract StarknetCoreFake {
     function consumeMessageFromL2(
         uint256 fromAddress,
         uint256[] calldata payload
-    ) external {
+    ) external view {
         require(isValid, "INVALID_MESSAGE_TO_CONSUME");
     }
 }
