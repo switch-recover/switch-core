@@ -1,3 +1,10 @@
-L1 deployment address: 0x4b4fE3787407A999f41703e340F8D33B143443d7
-L2 deployment address: 0x01842fdb2938386ee745ea5d77cea68736d46665f510fea7ed45cd8110e39937
-Fake ERC20 deployment address: 0xDC20B3816E7ca8e6978325e980B4911F8A097883
+Deploying L1 contracts with the account: 0xeb73F28e71816d32e09C5fDd1B1C2382a2e782a6
+Account balance: 70480818467337417
+Deployed L1 recovery contract factory: 0x3b66Ee9b59E5065f7fa3A2E58CF0F280514cCE36
+Deployed fake Starknet core contract (for testing): 0x70114BBF987F55Fd8894c4a4eCb34cf2524a8b33
+Deployed L1 gateway contract in testing mode
+L1 GatewayContract address: 0xBdAb7BfE391fCf79a5362E8C1b1AB16B36c0c26a
+Deployed fake USDC: 0xC85244062426e0692223a3497997ae652B2bD5e2
+Deployed fake UNI: 0x1eC8d1dd048A23AFCBa1617c0f3452a0890aEE6F
+Deployed fake WETH: 0xBe48104888C454d327e9A6c671c2cF77b13Ba06d
+Deployed L2 storage prover: 0x038cf22e90e914d60af8e50269b6abdf53d7f812e8e7b6df0cd1f5f2b6342cf4

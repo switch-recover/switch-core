@@ -80,7 +80,7 @@ async function main() {
         L1FakeWETH: erc20Fake3.address,
     }
 
-    fs.writeFileSync("./deployments.txt", JSON.stringify(deploymentAddresses), { encoding: "utf8", flag: "w" })
+    fs.writeFileSync("scripts/deployments.json", JSON.stringify(deploymentAddresses))
 }
 
 main()

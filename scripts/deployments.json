@@ -1,0 +1,11 @@
+{
+    "Mode": "testing",
+    "Deployer": "0xeb73F28e71816d32e09C5fDd1B1C2382a2e782a6",
+    "L1RecoveryContractFactory": "0x3b66Ee9b59E5065f7fa3A2E58CF0F280514cCE36",
+    "L1StarknetCoreContract": "0x70114BBF987F55Fd8894c4a4eCb34cf2524a8b33",
+    "L1GatewayContract": "0xBdAb7BfE391fCf79a5362E8C1b1AB16B36c0c26a",
+    "L2StorageProverContract": "0x038cf22e90e914d60af8e50269b6abdf53d7f812e8e7b6df0cd1f5f2b6342cf4",
+    "L1FakeUSDC": "0xC85244062426e0692223a3497997ae652B2bD5e2",
+    "L1FakeUNI": "0x1eC8d1dd048A23AFCBa1617c0f3452a0890aEE6F",
+    "L1FakeWETH": "0xBe48104888C454d327e9A6c671c2cF77b13Ba06d"
+}
