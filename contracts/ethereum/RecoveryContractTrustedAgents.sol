@@ -13,7 +13,9 @@ contract RecoveryContractTrustedAgents is RecoveryContract {
         address _gatewayContract,
         address _EOA,
         string memory _legalDocumentsHash
-    ) RecoveryContract ( _recipient,  _minBlocks,  _gatewayContract , _EOA  ) {
+    ) RecoveryContract(_recipient, _minBlocks, _gatewayContract, _EOA) {
         legalDocumentsHash = _legalDocumentsHash;
     }
+
+    // TODO
 }
