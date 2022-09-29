@@ -17,7 +17,8 @@ const config: HardhatUserConfig = {
     },
     starknet: {
         venv: "cairo_venv",
-        network: "alpha-goerli",
+        // network: "alpha-goerli",
+        network: "localhost",
         wallets: {
             OpenZeppelin: {
                 accountName: "OpenZeppelin",
@@ -32,9 +33,15 @@ const config: HardhatUserConfig = {
             chainId: 5,
             accounts: [process.env.DEPLOYER_PRIVATE_KEY || ""],
         },
+        localhost: {
+            url: "http://127.0.0.1:5050",
+        },
     },
     etherscan: {
         apiKey: process.env.ETHERSCAN_API_KEY,
+    },
+    mocha: {
+        timeout: "100000",
     },
 }
 
