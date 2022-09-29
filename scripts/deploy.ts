@@ -1,6 +1,7 @@
-// To compile: npx hardhat compile
-// To deploy: npx hardhat run --network goerli scripts/deploy.ts
-// To verify: npx hardhat verify --network goerli <address> "0xde29d060D45901Fb19ED6C6e959EB22d8626708e"
+// To compile: npx hardhat compile  (Ethereum)
+//             npx hardhat starknet-compile  (StarkNet)
+// To deploy:  npx hardhat run --network goerli scripts/deploy.ts
+// To verify:  npx hardhat verify --network goerli <address> <constructor args>
 
 import { ethers } from "hardhat"
 import { starknet } from "hardhat"
@@ -66,6 +67,18 @@ async function main() {
         _L1_gateway_address: BigInt(gatewayContract.address),
     })
     console.log("Deployed L2 storage prover:", storageProver.address)
+
+    // Set StorageProver contract address in L1 gateway contract
+    let gatewayContractWithSigner = gatewayContract.connect(deployer)
+    let tx = await gatewayContractWithSigner.setProverAddress(BigInt(storageProver.address))
+    await tx.wait()
+    console.log("Set StorageProver contract address in L1 gateway contract, tx: ", tx.hash)
+
+    // Set gateway contract address in recovery contract factory
+    let factoryContractWithSigner = factoryContract.connect(deployer)
+    let tx2 = await factoryContractWithSigner.setGatewayContract(gatewayContract.address)
+    await tx2.wait()
+    console.log("Set gateway contract address in recovery contract factory, tx: ", tx.hash)
 
     // Write deployment addresses to scripts/deployments.txt
     const deploymentAddresses = {
