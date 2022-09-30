@@ -43,16 +43,6 @@
           "internalType": "uint256[]",
           "name": "amounts",
           "type": "uint256[]"
-        },
-        {
-          "internalType": "address",
-          "name": "caller",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
         }
       ],
       "name": "claimAssets",
