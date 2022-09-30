@@ -54,6 +54,7 @@ contract RecoveryContractPassword is
         require(blocks >= minBlocks, "Inactivity too short");
         verifyZkProof(proof, _recipient);
         isActive = true;
+        recipient = _recipient;
         return (EOA, address(this), _recipient);
     }
 }

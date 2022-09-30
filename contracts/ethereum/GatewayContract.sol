@@ -33,9 +33,7 @@ interface IRecoveryContract {
 
     function claimAssets(
         address[] calldata erc20contracts,
-        uint256[] calldata amounts,
-        address caller,
-        address to
+        uint256[] calldata amounts
     ) external;
 }
 
