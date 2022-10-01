@@ -2,6 +2,7 @@
 //             npx hardhat starknet-compile  (StarkNet)
 // To deploy:  npx hardhat run --network goerli scripts/deploy.ts
 // To verify:  npx hardhat verify --network goerli <address> <constructor args>
+//             npx hardhat starknet-verify --starknet-network alpha --path <path/to/cairo/contract> --compiler-version 0.9.1 --address <address>
 
 import { ethers } from "hardhat"
 import { starknet } from "hardhat"
