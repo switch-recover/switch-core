@@ -89,6 +89,13 @@ contract GatewayContract {
     bool public proverAddressIsSet = false;
     bool public trustedAgentIsSet = false;
     mapping(address => address) public eoaToRecoveryContract;
+    mapping(address => RecoveryContractType) public eoaToContractType;
+
+    enum RecoveryContractType {
+        Default,
+        Password,
+        TrustedAgent
+    }
 
     event ActivateRecoveryContract(
         address EOA,
@@ -163,17 +170,30 @@ contract GatewayContract {
     }
 
     /**
+     * @dev Retrieve recovery contract type tied to particular EOA.
+     */
+    function getRecoveryContractType(address eoa)
+        external
+        view
+        returns (RecoveryContractType)
+    {
+        return eoaToContractType[eoa];
+    }
+
+    /**
      * @dev Update mapping to change the recovery contract stored for a particular EOA.
      */
     function updateRecoveryContract(
         address eoa,
-        address recoveryContractAddress
+        address recoveryContractAddress,
+        RecoveryContractType contractType
     ) external {
         require(
             msg.sender == recoveryContractFactory,
             "Only callable by contract factory"
         );
         eoaToRecoveryContract[eoa] = recoveryContractAddress;
+        eoaToContractType[eoa] = contractType;
     }
 
     /**
@@ -263,6 +283,7 @@ contract GatewayContract {
             "No existing recovery"
         );
         delete eoaToRecoveryContract[msg.sender];
+        delete eoaToContractType[msg.sender];
         emit TerminateRecoveryContract(
             msg.sender,
             recoveryContractAddress,

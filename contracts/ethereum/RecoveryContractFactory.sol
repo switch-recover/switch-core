@@ -8,6 +8,12 @@ import "./RecoveryContractPassword.sol";
 import "./RecoveryContractTrustedAgents.sol";
 import "hardhat/console.sol";
 
+enum RecoveryContractType {
+    Default,
+    Password,
+    TrustedAgent
+}
+
 /**
  * @dev Interface for gateway contract, used to update mapping of EOAs to recovery contracts.
  */
@@ -16,7 +22,8 @@ interface IGatewayContract {
 
     function updateRecoveryContract(
         address eoa,
-        address recoveryContractAddress
+        address recoveryContractAddress,
+        RecoveryContractType contractType
     ) external;
 
     function getTrustedAgent() external returns (address);
@@ -26,12 +33,6 @@ contract RecoveryContractFactory {
     address public gatewayContract;
     address public owner;
     bool public gatewayAddressIsSet = false;
-
-    enum RecoveryContractType {
-        Default,
-        Password,
-        TrustedAgent
-    }
 
     event NewRecoveryContract(
         address indexed EOA,
@@ -80,7 +81,8 @@ contract RecoveryContractFactory {
 
         IGatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
-            _recoveryContractAddress
+            _recoveryContractAddress,
+            RecoveryContractType.Default
         );
 
         emit NewRecoveryContract(
@@ -107,7 +109,8 @@ contract RecoveryContractFactory {
 
         IGatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
-            _recoveryContractAddress
+            _recoveryContractAddress,
+            RecoveryContractType.Password
         );
 
         emit NewRecoveryContract(
@@ -139,7 +142,8 @@ contract RecoveryContractFactory {
 
         IGatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
-            _recoveryContractAddress
+            _recoveryContractAddress,
+            RecoveryContractType.TrustedAgent
         );
 
         emit NewRecoveryContract(
