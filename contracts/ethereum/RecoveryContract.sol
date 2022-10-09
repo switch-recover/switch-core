@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "./GatewayContract.sol";
 import "./token/IERC20.sol";
 import "hardhat/console.sol";
 
@@ -11,6 +12,8 @@ contract RecoveryContract {
     address public gatewayContract;
     uint256 public minBlocks;
     bool public isActive = false;
+    uint256 deploymentDate;
+    uint256 deploymentBlock;
 
     constructor(
         address _recipient,
@@ -22,6 +25,13 @@ contract RecoveryContract {
         EOA = _EOA;
         minBlocks = _minBlocks;
         gatewayContract = _gatewayContract;
+        deploymentDate = block.timestamp;
+        deploymentBlock = block.number;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == EOA, "Only callable by recovery contract owner");
+        _;
     }
 
     modifier onlyGateway() {
@@ -30,6 +40,20 @@ contract RecoveryContract {
             "Only callable by gateway contract"
         );
         _;
+    }
+
+    modifier gatewayEnabled() {
+        bool enabled = GatewayContract(gatewayContract).getEnabled();
+        require(enabled == true, "Gateway contract is disabled");
+        _;
+    }
+
+    function updateRecipient(address _recipient) external onlyOwner {
+        recipient = _recipient;
+    }
+
+    function updateMinBlocks(address _minBlocks) external onlyOwner {
+        minBlocks = _minBlocks;
     }
 
     function activateRecovery(uint256 blocks)
@@ -50,7 +74,7 @@ contract RecoveryContract {
     function claimAssets(
         address[] calldata erc20contracts,
         uint256[] calldata amounts
-    ) external {
+    ) external gatewayEnabled {
         require(msg.sender == recipient, "Only recipient");
         require(isActive, "Not active");
         require(erc20contracts.length == amounts.length, "Wrong length");

@@ -14,21 +14,6 @@ enum RecoveryContractType {
     TrustedAgent
 }
 
-/**
- * @dev Interface for gateway contract, used to update mapping of EOAs to recovery contracts.
- */
-interface IGatewayContract {
-    function getRecoveryContract(address eoa) external returns (address);
-
-    function updateRecoveryContract(
-        address eoa,
-        address recoveryContractAddress,
-        RecoveryContractType contractType
-    ) external;
-
-    function getTrustedAgent() external returns (address);
-}
-
 contract RecoveryContractFactory {
     address public gatewayContract;
     address public owner;
@@ -52,9 +37,15 @@ contract RecoveryContractFactory {
     }
 
     modifier noExistingRecoveryContract() {
-        address existingContract = IGatewayContract(gatewayContract)
+        address existingContract = GatewayContract(gatewayContract)
             .getRecoveryContract(msg.sender);
         require(existingContract == address(0), "Existing recovery contract");
+        _;
+    }
+
+    modifier gatewayEnabled() {
+        bool enabled = IGatewayContract(gatewayContract).getEnabled();
+        require(enabled == true, "Gateway contract is disabled");
         _;
     }
 
@@ -69,6 +60,7 @@ contract RecoveryContractFactory {
         external
         gatewayAddrSet
         noExistingRecoveryContract
+        gatewayEnabled
     {
         address _recoveryContractAddress = address(
             new RecoveryContract(
@@ -79,10 +71,10 @@ contract RecoveryContractFactory {
             )
         );
 
-        IGatewayContract(gatewayContract).updateRecoveryContract(
+        GatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
             _recoveryContractAddress,
-            RecoveryContractType.Default
+            GatewayContract.RecoveryContractType.Default
         );
 
         emit NewRecoveryContract(
@@ -97,7 +89,7 @@ contract RecoveryContractFactory {
     function deployPasswordRecoveryContract(
         uint256 _hashedPassword,
         uint256 minBlocks
-    ) external gatewayAddrSet noExistingRecoveryContract {
+    ) external gatewayAddrSet noExistingRecoveryContract gatewayEnabled {
         address _recoveryContractAddress = address(
             new RecoveryContractPassword(
                 _hashedPassword,
@@ -107,10 +99,10 @@ contract RecoveryContractFactory {
             )
         );
 
-        IGatewayContract(gatewayContract).updateRecoveryContract(
+        GatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
             _recoveryContractAddress,
-            RecoveryContractType.Password
+            GatewayContract.RecoveryContractType.Password
         );
 
         emit NewRecoveryContract(
@@ -125,9 +117,9 @@ contract RecoveryContractFactory {
     function deployTrustedAgentRecoveryContract(
         string memory hashedlegalDocuments,
         uint256 minBlocks
-    ) external gatewayAddrSet noExistingRecoveryContract {
+    ) external gatewayAddrSet noExistingRecoveryContract gatewayEnabled {
         address trustedAgentAddress = address(
-            IGatewayContract(gatewayContract).getTrustedAgent()
+            GatewayContract(gatewayContract).getTrustedAgent()
         );
 
         address _recoveryContractAddress = address(
@@ -140,10 +132,10 @@ contract RecoveryContractFactory {
             )
         );
 
-        IGatewayContract(gatewayContract).updateRecoveryContract(
+        GatewayContract(gatewayContract).updateRecoveryContract(
             msg.sender,
             _recoveryContractAddress,
-            RecoveryContractType.TrustedAgent
+            GatewayContract.RecoveryContractType.TrustedAgent
         );
 
         emit NewRecoveryContract(

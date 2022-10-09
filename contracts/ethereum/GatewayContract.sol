@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 import "./RecoveryContract.sol";
+import "./RecoveryContractPassword.sol";
+import "./RecoveryContractTrustedAgents.sol";
 import "./RecoveryContractFactory.sol";
 import "hardhat/console.sol";
 
@@ -17,59 +19,6 @@ interface IStarknetCore {
         uint256 fromAddress,
         uint256[] calldata payload
     ) external;
-}
-
-/**
- * @dev Interface for default variant of Switch recovery contract that requires nominating a recipient address.
- */
-interface IRecoveryContract {
-    function activateRecovery(uint256 blocks)
-        external
-        returns (
-            address,
-            address,
-            address
-        );
-
-    function claimAssets(
-        address[] calldata erc20contracts,
-        uint256[] calldata amounts
-    ) external;
-}
-
-/**
- * @dev Interface for password variant of Switch recovery contract that is verified using a ZK proof.
- */
-interface IRecoveryContractPassword {
-    function activateRecovery(
-        uint256 blocks,
-        bytes calldata proof,
-        address _recipient
-    )
-        external
-        returns (
-            address,
-            address,
-            address
-        );
-}
-
-/**
- * @dev Interface for the trusted agent variant of the Switch recovery contract.
- */
-interface IRecoveryContractTrustedAgents {
-    // TODO
-}
-
-/**
- * @dev Contract factory for deploying different variants of recovery conttracts.
- */
-interface IRecoveryContractFactory {
-    function deployRecoveryContract(
-        address recipient,
-        address eoa,
-        uint256 minBlocks
-    ) external returns (address recoveryContract);
 }
 
 /**
@@ -88,6 +37,7 @@ contract GatewayContract {
     uint256 public l2StorageProverAddress;
     bool public proverAddressIsSet = false;
     bool public trustedAgentIsSet = false;
+    bool public enabled = true;
     mapping(address => address) public eoaToRecoveryContract;
     mapping(address => RecoveryContractType) public eoaToContractType;
 
@@ -110,6 +60,10 @@ contract GatewayContract {
         uint256 terminationDate
     );
 
+    event DisableContract(uint256 disableDate);
+
+    event EnableContract(uint256 enableDate);
+
     constructor(IStarknetCore _starknetCore, address _recoveryContractFactory) {
         starknetCore = _starknetCore;
         owner = msg.sender;
@@ -131,6 +85,11 @@ contract GatewayContract {
 
     modifier proverIsSet() {
         require(proverAddressIsSet == true, "Prover contract address not set");
+        _;
+    }
+
+    modifier gatewayEnabled() {
+        require(enabled == true, "Gateway contract is disabled");
         _;
     }
 
@@ -225,6 +184,7 @@ contract GatewayContract {
     function activateRecoveryContract(uint256 userAddress, uint256 blocks)
         external
         proverIsSet
+        gatewayEnabled
     {
         address _recoveryContractAddress = checkRecoveryValid(
             userAddress,
@@ -234,9 +194,7 @@ contract GatewayContract {
             address _eoa,
             address _recoveryContract,
             address _recipient
-        ) = IRecoveryContract(_recoveryContractAddress).activateRecovery(
-                blocks
-            );
+        ) = RecoveryContract(_recoveryContractAddress).activateRecovery(blocks);
         emit ActivateRecoveryContract(
             _eoa,
             _recoveryContract,
@@ -254,7 +212,7 @@ contract GatewayContract {
         uint256 blocks,
         bytes calldata proof,
         address recipient
-    ) external proverIsSet {
+    ) external proverIsSet gatewayEnabled {
         address _recoveryContractAddress = checkRecoveryValid(
             userAddress,
             blocks
@@ -263,8 +221,11 @@ contract GatewayContract {
             address _eoa,
             address _recoveryContract,
             address _recipient
-        ) = IRecoveryContractPassword(_recoveryContractAddress)
-                .activateRecovery(blocks, proof, recipient);
+        ) = RecoveryContractPassword(_recoveryContractAddress).activateRecovery(
+                blocks,
+                proof,
+                recipient
+            );
         emit ActivateRecoveryContract(
             _eoa,
             _recoveryContract,
@@ -289,5 +250,25 @@ contract GatewayContract {
             recoveryContractAddress,
             block.timestamp
         );
+    }
+
+    /**
+     * @dev Disable all recovery contracts (kill switch).
+     */
+    function disable() external onlyOwner {
+        enabled = false;
+        emit DisableContract(block.timestamp);
+    }
+
+    /**
+     * @dev Re-enable all recovery contracts (disable kill switch).
+     */
+    function enable() external onlyOwner {
+        enabled = true;
+        emit EnableContract(block.timestamp);
+    }
+
+    function getEnabled() external view returns (bool) {
+        return enabled;
     }
 }
