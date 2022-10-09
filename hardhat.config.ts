@@ -17,8 +17,8 @@ const config: HardhatUserConfig = {
     },
     starknet: {
         venv: "cairo_venv",
-        // network: "alpha-goerli",
-        network: "localhost",
+        network: "alpha-goerli", // testnet
+        // network: "localhost", // testing
         wallets: {
             OpenZeppelin: {
                 accountName: "OpenZeppelin",
